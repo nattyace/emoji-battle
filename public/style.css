@@ -1,0 +1,18 @@
+/* style.css */
+.emoji-cell {
+    width: 60px;
+    height: 60px;
+    font-size: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ddd;
+    transition: background-color 0.3s ease;
+  }
+  
+  .emoji-cell.selected {
+    background-color: #cce5ff; /* Light blue */
+    border: 2px solid #007bff;
+  }
+  

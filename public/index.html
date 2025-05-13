@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emoji Battle</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    .emoji-cell { width: 60px; height: 60px; font-size: 36px; cursor: pointer; transition: transform 0.2s; }
+    .emoji-cell:hover { transform: scale(1.1); }
+    .grid { display: grid; grid-template-columns: repeat(6, 60px); gap: 2px; }
+  </style>
+</head>
+<body class="bg-blue-100 flex flex-col items-center justify-center h-screen">
+  <h1 class="text-5xl font-extrabold text-blue-800 mb-6">Emoji Battle</h1>
+  <div id="timer" class="text-3xl font-semibold text-gray-800 mb-4">60</div>
+  <div id="grid" class="grid bg-white p-4 rounded-lg shadow-lg"></div>
+  <div id="leaderboard" class="mt-6">
+    <h2 class="text-2xl font-bold text-blue-700">Leaderboard</h2>
+    <ul id="scores" class="list-disc pl-6 text-lg text-gray-700"></ul>
+  </div>
+  <script src="/script.js"></script>
+</body>
+</html>
