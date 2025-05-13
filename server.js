@@ -5,7 +5,28 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Improved CORS configuration
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:3000", "https://emoji-battle.vercel.app"],
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
+  }
+});
+
+// Add Express CORS middleware for REST endpoints
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000, https://emoji-battle.vercel.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.static('public'));
 
@@ -39,7 +60,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Game timer
 setInterval(() => {
   if (timeLeft > 0) {
     timeLeft--;

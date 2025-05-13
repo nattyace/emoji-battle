@@ -1,4 +1,4 @@
-const socket = io('https://emoji-battle.vercel.app');
+const socket = io(window.location.origin); // Dynamically use the current origin  
 const grid = document.getElementById('grid');
 const scoresList = document.getElementById('scores');
 const timerDisplay = document.getElementById('timer');
