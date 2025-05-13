@@ -1,4 +1,4 @@
-const socket = io();
+const socket = io('https://emoji-battle.vercel.app');
 const grid = document.getElementById('grid');
 const scoresList = document.getElementById('scores');
 const timerDisplay = document.getElementById('timer');
