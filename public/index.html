@@ -3,24 +3,460 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emoji Battle</title>
+  <title>Emoji Battle Royale</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
   <script src="/socket.io/socket.io.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    .emoji-cell { width: 60px; height: 60px; font-size: 36px; cursor: pointer; transition: transform 0.2s; }
-    .emoji-cell:hover { transform: scale(1.1); }
-    .grid { display: grid; grid-template-columns: repeat(6, 60px); gap: 2px; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      min-height: 100vh;
+    }
+    .emoji-cell { 
+      width: 70px; 
+      height: 70px; 
+      font-size: 40px; 
+      cursor: pointer; 
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .emoji-cell:hover { 
+      transform: scale(1.1); 
+      background: white;
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15);
+    }
+    .emoji-cell.selected { 
+      background: rgba(252, 211, 77, 0.85) !important; 
+      box-shadow: 0 0 12px rgba(252, 211, 77, 0.8) !important;
+      animation: pulse 1.5s infinite;
+    }
+    .emoji-cell.match-animation {
+      animation: match 0.5s ease-out;
+    }
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(6, 70px); 
+      gap: 8px; 
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    .game-container {
+      transition: all 0.3s ease;
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      border-radius: 50px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .notification.show {
+      opacity: 1;
+    }
+    .player-info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    #timer {
+      font-size: 2.5rem;
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      margin: 0 auto;
+      position: relative;
+      margin-bottom: 20px;
+    }
+    #timer.urgent {
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      animation: pulse 1s infinite;
+    }
+    .leaderboard-container {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 350px;
+      margin-left: 20px;
+    }
+    .score-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      margin: 4px 0;
+      border-radius: 8px;
+      background: rgba(243, 244, 246, 0.7);
+      transition: all 0.2s;
+    }
+    .score-item.self {
+      background: rgba(96, 165, 250, 0.2);
+      font-weight: bold;
+    }
+    .score-item:hover {
+      background: rgba(243, 244, 246, 1);
+      transform: translateY(-2px);
+    }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .modal.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 500px;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+    .modal.active .modal-content {
+      transform: translateY(0);
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #4F46E5;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #4338CA;
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: #E5E7EB;
+      color: #1F2937;
+    }
+    .btn-secondary:hover {
+      background: #D1D5DB;
+      transform: translateY(-2px);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    .badge-blue {
+      background: rgba(96, 165, 250, 0.2);
+      color: #2563EB;
+    }
+    .badge-green {
+      background: rgba(52, 211, 153, 0.2);
+      color: #059669;
+    }
+    .pulse-animation {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    @keyframes match {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); opacity: 0.7; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .powerup-tooltip {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .game-controls {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 420px;
+      margin: 20px auto;
+    }
+    .shake-animation {
+      animation: shake 0.5s;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+    .player-count {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .combo-multiplier {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(252, 211, 77, 0.9);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .combo-multiplier.active {
+      opacity: 1;
+    }
+    .help-button {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s;
+    }
+    .help-button:hover {
+      transform: scale(1.1);
+      background: white;
+    }
+    .powerup-legend {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+      width: 100%;
+      max-width: 350px;
+      margin-left: 20px;
+    }
+    .powerup-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .powerup-icon {
+      font-size: 1.5rem;
+      margin-right: 10px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(243, 244, 246, 0.7);
+      border-radius: 8px;
+    }
   </style>
 </head>
-<body class="bg-blue-100 flex flex-col items-center justify-center h-screen">
-  <h1 class="text-5xl font-extrabold text-blue-800 mb-6">Emoji Battle</h1>
-  <div id="timer" class="text-3xl font-semibold text-gray-800 mb-4">60</div>
-  <div id="grid" class="grid bg-white p-4 rounded-lg shadow-lg"></div>
-  <div id="leaderboard" class="mt-6">
-    <h2 class="text-2xl font-bold text-blue-700">Leaderboard</h2>
-    <ul id="scores" class="list-disc pl-6 text-lg text-gray-700"></ul>
+<body class="flex items-center justify-center min-h-screen p-4">
+  <div class="player-info">
+    Playing as: <span id="player-name">Anonymous</span>
+    <button id="change-name" class="ml-2 text-blue-600 text-sm">
+      <i class="fas fa-pencil-alt"></i>
+    </button>
   </div>
+  
+  <div class="player-count">
+    <i class="fas fa-users mr-2"></i>
+    <span id="online-players">0</span> players online
+  </div>
+  
+  <div id="combo-multiplier" class="combo-multiplier">
+    <i class="fas fa-fire mr-2"></i>
+    <span>2x Points</span>
+  </div>
+  
+  <div id="notification" class="notification"></div>
+  
+  <div class="flex flex-col lg:flex-row items-start justify-center">
+    <div class="game-container flex flex-col items-center">
+      <h1 class="text-5xl font-extrabold text-white mb-6 text-center">
+        Emoji Battle <span class="text-yellow-300">Royale</span>
+      </h1>
+      
+      <div id="waiting-message" class="bg-white p-4 rounded-lg shadow-lg mb-6 text-center hidden">
+        <h2 class="text-xl font-bold text-blue-800">Waiting for players...</h2>
+        <p class="text-gray-600">Need at least 2 players to start the game</p>
+        <div class="mt-4 flex justify-center">
+          <button id="start-game" class="btn btn-primary">
+            Start Game
+          </button>
+        </div>
+      </div>
+      
+      <div id="timer" class="text-center">60</div>
+      
+      <div class="game-controls">
+        <button id="shuffle-grid" class="btn btn-secondary">
+          <i class="fas fa-random mr-2"></i> Shuffle
+        </button>
+        <button id="hint-button" class="btn btn-secondary">
+          <i class="fas fa-lightbulb mr-2"></i> Hint
+        </button>
+      </div>
+      
+      <div id="grid" class="grid"></div>
+      
+      <div id="powerup-tooltip" class="powerup-tooltip"></div>
+    </div>
+    
+    <div class="ml-0 lg:ml-6 mt-6 lg:mt-0 w-full lg:w-auto">
+      <div class="leaderboard-container">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold text-blue-700">Leaderboard</h2>
+          <div class="badge badge-blue">Live</div>
+        </div>
+        <div id="scores" class="space-y-2"></div>
+      </div>
+      
+      <div class="powerup-legend">
+        <h3 class="text-xl font-bold text-blue-700 mb-4">Powerups</h3>
+        <div class="powerup-item">
+          <div class="powerup-icon">⚡</div>
+          <div>
+            <div class="font-semibold">Lightning</div>
+            <div class="text-sm text-gray-600">Clears entire row</div>
+          </div>
+        </div>
+        <div class="powerup-item">
+          <div class="powerup-icon">💣</div>
+          <div>
+            <div class="font-semibold">Bomb</div>
+            <div class="text-sm text-gray-600">Clears 3x3 area</div>
+          </div>
+        </div>
+        <div class="powerup-item">
+          <div class="powerup-icon">🔄</div>
+          <div>
+            <div class="font-semibold">Refresh</div>
+            <div class="text-sm text-gray-600">Shuffles part of the grid</div>
+          </div>
+        </div>
+        <div class="powerup-item">
+          <div class="powerup-icon">⭐</div>
+          <div>
+            <div class="font-semibold">Star</div>
+            <div class="text-sm text-gray-600">Double points for 10 seconds</div>
+          </div>
+        </div>
+        <div class="powerup-item">
+          <div class="powerup-icon">🕒</div>
+          <div>
+            <div class="font-semibold">Clock</div>
+            <div class="text-sm text-gray-600">Adds 15 seconds to the timer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Name Change Modal -->
+  <div id="name-modal" class="modal">
+    <div class="modal-content">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Change Your Name</h2>
+      <input type="text" id="name-input" class="w-full p-2 border rounded-lg mb-4" 
+             placeholder="Enter your nickname" maxlength="20">
+      <div class="flex justify-end space-x-2">
+        <button id="cancel-name" class="btn btn-secondary">Cancel</button>
+        <button id="save-name" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Game Over Modal -->
+  <div id="game-over-modal" class="modal">
+    <div class="modal-content">
+      <h2 class="text-3xl font-bold text-center mb-2">Game Over!</h2>
+      <div id="winner-announcement" class="text-center text-xl mb-6"></div>
+      
+      <div class="mb-6">
+        <h3 class="text-xl font-bold mb-2">Final Scores</h3>
+        <div id="final-scores" class="space-y-2"></div>
+      </div>
+      
+      <div class="flex justify-center">
+        <button id="play-again" class="btn btn-primary">Play Again</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Help Modal -->
+  <div id="help-modal" class="modal">
+    <div class="modal-content">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">How to Play</h2>
+      <ul class="space-y-2 mb-6">
+        <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Click on adjacent matching emojis to score points</li>
+        <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Match emojis quickly for bonus points</li>
+        <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Use powerups for special abilities</li>
+        <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Player with the highest score when the timer ends wins!</li>
+      </ul>
+      <div class="flex justify-end">
+        <button id="close-help" class="btn btn-primary">Got it!</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="help-button" id="show-help">
+    <i class="fas fa-question"></i>
+  </div>
+  
   <script src="/script.js"></script>
 </body>
 </html>
